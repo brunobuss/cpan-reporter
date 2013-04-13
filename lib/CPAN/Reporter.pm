@@ -475,6 +475,8 @@ TRANSPORT_REQUIRED
           distname => $result->{dist_name},
           grade    => $result->{grade},
           via      => 'CPAN::Reporter ' . $CPAN::Reporter::VERSION,
+
+          test_output => join(q{},@{$result->{output}}),
     );
 
     $client->populate;
