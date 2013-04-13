@@ -561,7 +561,7 @@ sub test_report {
     if ( $t::Helper::sent_report =~ m/
         ^Output\ from\ '[^\']+':\n          # lead-in to test output
         ^\n                                 # blank line
-        ^(.+) \n                            # test output ending in newline
+        ^(.+)\n                             # test output ending in newline
         ^------------------------------ \n  # separator
         ^PREREQUISITES \n                   # next section
         /xms )
