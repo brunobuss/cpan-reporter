@@ -474,6 +474,7 @@ TRANSPORT_REQUIRED
           author   => $result->{author},
           distname => $result->{dist_name},
           grade    => $result->{grade},
+          command  => $result->{command},
           via      => 'CPAN::Reporter ' . $CPAN::Reporter::VERSION,
 
           test_output => join(q{},@{$result->{output}}),
