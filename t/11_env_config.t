@@ -46,18 +46,20 @@ for my $var ( @env_vars ) {
 }
 
 my %special_vars = (
-    '$^X' => $^X,
-    '$UID/$EUID' => "$< / $>",
-    '$GID' => "$(",
-    '$EGID' => "$)",
+    EXECUTABLE_NAME => $^X,
+    UID             => $<,
+    EUID            => $>,
+    GID             => $(,
+    EGID            => $),
 );
 
 if ( $^O eq 'MSWin32' && eval "require Win32" ) {
     my @getosversion = Win32::GetOSVersion();
     my $getosversion = join(", ", @getosversion);
-    $special_vars{"Win32::GetOSName"} = Win32::GetOSName();
+    $special_vars{'Win32::FsType'}       = Win32::FsType();
+    $special_vars{"Win32::GetOSName"}    = Win32::GetOSName();
     $special_vars{"Win32::GetOSVersion"} = $getosversion;
-    $special_vars{"Win32::IsAdminUser"} = Win32::IsAdminUser();
+    $special_vars{"Win32::IsAdminUser"}  = Win32::IsAdminUser();
 }
 
 my @toolchain_modules = qw(

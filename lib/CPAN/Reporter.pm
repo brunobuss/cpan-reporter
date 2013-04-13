@@ -1057,17 +1057,18 @@ sub _prompt {
 
 sub _special_vars_report {
     my $special_vars = << "HERE";
-    \$^X = $^X
-    \$UID/\$EUID = $< / $>
-    \$GID = $(
-    \$EGID = $)
+    EGID = $)
+    EUID = $>
+    EXECUTABLE_NAME = $^X
+    GID = $(
+    UID = $<
 HERE
     if ( $^O eq 'MSWin32' && eval "require Win32" ) { ## no critic
         my @getosversion = Win32::GetOSVersion();
         my $getosversion = join(", ", @getosversion);
+        $special_vars .= "    Win32::FsType = " . Win32::FsType() . "\n";
         $special_vars .= "    Win32::GetOSName = " . Win32::GetOSName() . "\n";
         $special_vars .= "    Win32::GetOSVersion = $getosversion\n";
-        $special_vars .= "    Win32::FsType = " . Win32::FsType() . "\n";
         $special_vars .= "    Win32::IsAdminUser = " . Win32::IsAdminUser() . "\n";
     }
     return $special_vars;
