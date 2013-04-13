@@ -19,6 +19,7 @@ use Test::Reporter 1.54 ();
 use CPAN::Reporter::Config ();
 use CPAN::Reporter::History ();
 use CPAN::Reporter::PrereqCheck ();
+use CPAN::Testers::Common::Client;
 
 use constant MAX_OUTPUT_LENGTH => 1_000_000;
 
@@ -385,9 +386,6 @@ END_BAD_DISTNAME
         return;
     }
 
-    # Gather 'expensive' data for the report
-    _expand_result( $result);
-
     # Skip if distribution name matches the send_skipfile
     if ( $config->{send_skipfile} && -r $config->{send_skipfile} ) {
         my $send_skipfile = IO::File->new( $config->{send_skipfile}, "r" );
@@ -472,8 +470,15 @@ TRANSPORT_REQUIRED
     $tr->from( $config->{email_from} );
 
     # Populate the test report
-    $tr->comments( _report_text( $result ) );
-    $tr->via( 'CPAN::Reporter ' . $CPAN::Reporter::VERSION );
+    my $client = CPAN::Testers::Common::Client->new(
+          author   => $result->{author},
+          distname => $result->{dist_name},
+          grade    => $result->{grade},
+          via      => 'CPAN::Reporter ' . $CPAN::Reporter::VERSION,
+    );
+
+    $client->populate;
+    $tr->comments( $client->email );
 
     # prompt for editing report
     if ( _prompt( $config, "edit_report", $tr->grade ) =~ /^y/ ) {
@@ -1044,119 +1049,6 @@ sub _prompt {
         $prompt = $action;
     }
     return lc $prompt;
-}
-
-#--------------------------------------------------------------------------#
-# _report_text
-#--------------------------------------------------------------------------#
-
-my %intro_para = (
-    'pass' => <<'HERE',
-Thank you for uploading your work to CPAN.  Congratulations!
-All tests were successful.
-HERE
-
-    'fail' => <<'HERE',
-Thank you for uploading your work to CPAN.  However, there was a problem
-testing your distribution.
-
-If you think this report is invalid, please consult the CPAN Testers Wiki
-for suggestions on how to avoid getting FAIL reports for missing library
-or binary dependencies, unsupported operating systems, and so on:
-
-http://wiki.cpantesters.org/wiki/CPANAuthorNotes
-HERE
-
-    'unknown' => <<'HERE',
-Thank you for uploading your work to CPAN.  However, attempting to
-test your distribution gave an inconclusive result.
-
-This could be because your distribution had an error during the make/build
-stage, did not define tests, tests could not be found, because your tests were
-interrupted before they finished, or because the results of the tests could not
-be parsed.  You may wish to consult the CPAN Testers Wiki:
-
-http://wiki.cpantesters.org/wiki/CPANAuthorNotes
-HERE
-
-    'na' => <<'HERE',
-Thank you for uploading your work to CPAN.  While attempting to build or test
-this distribution, the distribution signaled that support is not available
-either for this operating system or this version of Perl.  Nevertheless, any
-diagnostic output produced is provided below for reference.  If this is not
-what you expect, you may wish to consult the CPAN Testers Wiki:
-
-http://wiki.cpantesters.org/wiki/CPANAuthorNotes
-HERE
-
-);
-
-sub _report_text {
-    my $data = shift;
-    my $test_log = join(q{},@{$data->{output}});
-    if ( length $test_log > MAX_OUTPUT_LENGTH ) {
-        $test_log = substr( $test_log, 0, MAX_OUTPUT_LENGTH) . "\n";
-        my $max_k = int(MAX_OUTPUT_LENGTH/1000) . "K";
-        $test_log .= "\n[Output truncated after $max_k]\n\n";
-    }
-    # Flag automated report
-    my $default_comment = $ENV{AUTOMATED_TESTING}
-        ? "this report is from an automated smoke testing program\nand was not reviewed by a human for accuracy"
-        : "none provided" ;
-
-    # generate report
-    my $output = << "ENDREPORT";
-Dear $data->{author},
-
-This is a computer-generated report for $data->{dist_name}
-on perl $data->{perl_version}, created by CPAN-Reporter-$CPAN::Reporter::VERSION\.
-
-$intro_para{ $data->{grade} }
-Sections of this report:
-
-    * Tester comments
-    * Program output
-    * Prerequisites
-    * Environment and other context
-
-------------------------------
-TESTER COMMENTS
-------------------------------
-
-Additional comments from tester:
-
-$default_comment
-
-------------------------------
-PROGRAM OUTPUT
-------------------------------
-
-Output from '$data->{command}':
-
-$test_log
-------------------------------
-PREREQUISITES
-------------------------------
-
-Prerequisite modules loaded:
-
-$data->{prereq_pm}
-------------------------------
-ENVIRONMENT AND OTHER CONTEXT
-------------------------------
-
-Environment variables:
-
-$data->{env_vars}
-Perl special variables (and OS-specific diagnostics, for MSWin32):
-
-$data->{special_vars}
-Perl module toolchain versions installed:
-
-$data->{toolchain_versions}
-ENDREPORT
-
-    return $output;
 }
 
 #--------------------------------------------------------------------------#
