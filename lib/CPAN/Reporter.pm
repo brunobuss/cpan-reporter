@@ -49,7 +49,10 @@ sub configure {
 
 sub grade_make {
     my @args = @_;
+
     my $result = _init_result( 'make', @args ) or return;
+    my $client = _build_common_client( $result ) or return;
+
     _compute_make_grade($result);
     if ( $result->{grade} eq 'discard' ) {
         $CPAN::Frontend->myprint(
@@ -69,7 +72,10 @@ sub grade_make {
 
 sub grade_PL {
     my @args = @_;
+
     my $result = _init_result( 'PL', @args ) or return;
+    my $client = _build_common_client( $result ) or return;
+
     _compute_PL_grade($result);
     if ( $result->{grade} eq 'discard' ) {
         $CPAN::Frontend->myprint(
@@ -89,8 +95,11 @@ sub grade_PL {
 
 sub grade_test {
     my @args = @_;
+
     my $result = _init_result( 'test', @args ) or return;
-    _compute_test_grade($result);
+    my $client = _build_common_client( $result ) or return;
+
+    _compute_test_grade($result, $client);
     if ( $result->{grade} eq 'discard' ) {
         $CPAN::Frontend->myprint(
             "\nCPAN::Reporter: test results were not valid, $result->{grade_msg}.\n\n",
@@ -204,6 +213,21 @@ sub test {
 # private functions
 #--------------------------------------------------------------------------#
 
+sub _build_common_client {
+    my ($result) = @_;
+
+    # Populate the test report
+    my $client = CPAN::Testers::Common::Client->new(
+          author   => $result->{author},
+          distname => $result->{dist_name},
+          grade    => 'unknown',
+    );
+
+    $client->populate;
+
+    return $client;
+}
+
 #--------------------------------------------------------------------------#
 # _compute_make_grade
 #--------------------------------------------------------------------------#
@@ -270,6 +294,8 @@ sub _compute_PL_grade {
 
 sub _compute_test_grade {
     my $result = shift;
+    my $client = shift;
+
     my ($grade,$msg);
     my $output = $result->{output};
 
@@ -288,7 +314,8 @@ sub _compute_test_grade {
     else {
         # figure out the right harness parser
         _expand_result( $result );
-        my $harness_version = $result->{toolchain}{'Test::Harness'}{have};
+        my $harness_version = $client->metabase_data->{InstalledModules}{toolchain}{'Test::Harness'};
+
         my $harness_parser = CPAN::Version->vgt($harness_version, '2.99_01')
                     ? \&_parse_tap_harness
                     : \&_parse_test_harness;
@@ -645,8 +672,8 @@ sub _downgrade_known_causes {
 }
 
 #--------------------------------------------------------------------------#
-# _expand_result - add expensive information like prerequisites and
-# toolchain that should only be generated if a report will actually
+# _expand_result - add expensive information like prerequisites
+# that should only be generated if a report will actually
 # be sent
 #--------------------------------------------------------------------------#
 
@@ -660,7 +687,6 @@ sub _expand_result {
       $result->{env_vars} = _env_report();
     }
     $result->{special_vars} = _special_vars_report();
-    $result->{toolchain_versions} = _toolchain_report( $result );
     $result->{perl_version} = CPAN::Reporter::History::_format_perl_version();
     return;
 }
@@ -1215,58 +1241,6 @@ elsif ( $exitcode & 255 ) {
 print "($cmd_line exited with $exitcode)\n";
 HERE
     return $wrapper;
-}
-
-#--------------------------------------------------------------------------#-
-# _toolchain_report
-#--------------------------------------------------------------------------#
-
-my @toolchain_mods= qw(
-    CPAN
-    CPAN::Meta
-    Cwd
-    ExtUtils::CBuilder
-    ExtUtils::Command
-    ExtUtils::Install
-    ExtUtils::MakeMaker
-    ExtUtils::Manifest
-    ExtUtils::ParseXS
-    File::Spec
-    JSON
-    JSON::PP
-    Module::Build
-    Module::Signature
-    Parse::CPAN::Meta
-    Test::Harness
-    Test::More
-    YAML
-    YAML::Syck
-    version
-);
-
-sub _toolchain_report {
-    my ($result) = @_;
-
-    my $installed = _version_finder( map { $_ => 0 } @toolchain_mods );
-    $result->{toolchain} = $installed;
-
-    my $mod_width = _max_length( keys %$installed );
-    my $ver_width = _max_length(
-        map { $installed->{$_}{have} } keys %$installed
-    );
-
-    my $format = "    \%-${mod_width}s \%-${ver_width}s\n";
-
-    my $report = "";
-    $report .= sprintf( $format, "Module", "Have" );
-    $report .= sprintf( $format, "-" x $mod_width, "-" x $ver_width );
-
-    for my $var ( sort keys %$installed ) {
-        $report .= sprintf("    \%-${mod_width}s \%-${ver_width}s\n",
-                            $var, $installed->{$var}{have} );
-    }
-
-    return $report;
 }
 
 
