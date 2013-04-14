@@ -499,7 +499,7 @@ HERE
 
 );
 
-sub test_report_plan() { 13 };
+sub test_report_plan() { 12 };
 sub test_report {
     local $Test::Builder::Level = $Test::Builder::Level + 1;
 
@@ -528,8 +528,8 @@ sub test_report {
     local $ENV{PERL_MM_USE_DEFAULT} = 1;
     my $env_vars = CPAN::Reporter::_env_report();
     my $special_vars = CPAN::Reporter::_special_vars_report();
-    my $toolchain_versions = CPAN::Reporter::_toolchain_report();
-
+    #my $toolchain_versions = CPAN::Reporter::_toolchain_report();
+ 
     like( $t::Helper::sent_report, '/' . quotemeta($msg_re) . '/ms',
         "$label correct intro paragraph"
     );
@@ -550,9 +550,9 @@ sub test_report {
         "$label found special variables"
     );
 
-    like( $t::Helper::sent_report, '/' . quotemeta($toolchain_versions) . '/ms',
-        "$label found toolchain versions found"
-    );
+    #like( $t::Helper::sent_report, '/' . quotemeta($toolchain_versions) . '/ms',
+    #    "$label found toolchain versions found"
+    #);
 
     my $joined_output = join("", @$test_output);
 
